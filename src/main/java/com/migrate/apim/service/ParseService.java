@@ -1,9 +1,10 @@
-package com.migrate.apim;
+package com.migrate.apim.service;
 
 import org.raml.v2.api.RamlModelBuilder;
 import org.raml.v2.api.RamlModelResult;
 import org.raml.v2.api.model.common.ValidationResult;
 import org.raml.v2.api.model.v10.api.Api;
+import org.raml.v2.api.model.v10.bodies.Response;
 import org.raml.v2.api.model.v10.methods.Method;
 import org.raml.v2.api.model.v10.resources.Resource;
 import org.slf4j.Logger;
@@ -76,27 +77,39 @@ public class ParseService {
         for (Resource resource : resources) {
             openApi.append("    \"").append(resource.resourcePath()).append("\": {\n");
             List<Method> methods = resource.methods();
-            for (Method method : methods) {
+            for (int i = 0; i < methods.size(); i++) {
+                Method method = methods.get(i);
                 openApi.append("      \"").append(method.method()).append("\": {\n");
                 openApi.append("        \"description\": \"").append(method.description() != null ? method.description().value() : "").append("\",\n");
                 openApi.append("        \"responses\": {\n");
-                method.responses().forEach(response -> {
+                List<Response> responses = method.responses();
+                for (int j = 0; j < responses.size(); j++) {
+                    Response response = responses.get(j);
                     openApi.append("          \"").append(response.code().value()).append("\": {\n");
                     String description = response.description() != null && response.description().value() != null
                             ? response.description().value()
                             : "No description provided";
                     openApi.append("            \"description\": \"").append(description).append("\"\n");
-                    openApi.append("          }\n");
-                });
+                    openApi.append("          }");
+                    if (j < responses.size() - 1) {
+                        openApi.append(",");
+                    }
+                    openApi.append("\n");
+                }
                 openApi.append("        }\n");
-                openApi.append("      }\n");
+                openApi.append("      }");
+                if (i < methods.size() - 1) {
+                    openApi.append(",");
+                }
+                openApi.append("\n");
             }
-            openApi.append("    },\n");
+            openApi.append("    },");
+            openApi.append("\n");
         }
 
-        // Remove the trailing comma if there are any paths
-        if (openApi.charAt(openApi.length() - 2) == ',') {
-            openApi.setLength(openApi.length() - 2);
+        // Remove the trailing comma and newline from the last resource if there are any paths
+        if (!resources.isEmpty()) {
+            openApi.setLength(openApi.length() - 2); // removes the comma and newline
             openApi.append("\n");
         }
 

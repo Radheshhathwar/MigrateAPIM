@@ -1,6 +1,9 @@
 package com.migrate.apim;
 
-import org.raml.v2.api.model.v10.api.Api;
+import com.migrate.apim.configuration.LocalConfig;
+import com.migrate.apim.service.DiscoveryService;
+import com.migrate.apim.service.MigrationService;
+import com.migrate.apim.service.ParseService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.boot.SpringApplication;
@@ -8,6 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
@@ -25,6 +29,9 @@ public class MainApplication implements CommandLineRunner {
     @Autowired
     private MigrationService migrationService;
 
+    @Autowired
+    private LocalConfig localConfig;
+
     public static void main(String[] args) {
         SpringApplication.run(MainApplication.class, args);
     }
@@ -32,9 +39,15 @@ public class MainApplication implements CommandLineRunner {
     @Override
     public void run(String... args) {
         try {
-            String localRepoPath = "/home/radhesh/mulesoft-test-repo/supplier-data-radar-api";
-            Path repoPath = Paths.get(localRepoPath); // Convert the string path to a Path object
-
+            String localRepoPath = localConfig.getPath();
+            Path repoPath = Paths.get(localRepoPath);
+            // Extract the project name (last directory name in the path)
+            String projectName;
+            if (Files.isDirectory(repoPath)) {
+                projectName = repoPath.getFileName().toString();
+            } else {
+                projectName = repoPath.getParent().getFileName().toString();
+            }
             // Discover the main RAML file
             Path filepath = discoveryService.discoverMainRamlFile(repoPath);
             logger.info("Discovered RAML file: {}", filepath);
@@ -44,7 +57,7 @@ public class MainApplication implements CommandLineRunner {
             logger.info("Parsed RAML file content successfully.");
 
             // Migrate to Azure
-            migrationService.writeOpenApiToFileAndPushToGit(openApiContent);
+            migrationService.writeOpenApiToFileAndPushToGit(openApiContent, projectName);
             logger.info("Migration to Azure API Management completed successfully.");
 
         } catch (Exception e) {
